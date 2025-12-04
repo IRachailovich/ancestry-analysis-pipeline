@@ -71,6 +71,36 @@ High-coverage genomes from 300 individuals representing 142 diverse populations 
 
 ---
 
+### 4. Lazaridis et al. (2014) - Three Ancestral Populations (`lazaridis2014/`)
+
+Landmark study identifying three ancestral populations for present-day Europeans.
+
+**Source**: https://reichdata.hms.harvard.edu/pub/datasets/ancient_dna/lazaridis2014_nature/
+
+**Contents**:
+- `Lazaridis_Nature2014.geno` - Genotype data
+- `Lazaridis_Nature2014.snp` - SNP information
+- `Lazaridis_Nature2014.ind` - Individual information
+- `Lazaridis_Nature2014_populations.txt` - Population annotations
+
+**Key samples**:
+- **Loschbour** - 8,000-year-old Western Hunter-Gatherer (Luxembourg)
+- **Stuttgart** - 7,000-year-old Early European Farmer (Germany)
+- **Comparison with Yamnaya** - Steppe pastoralists
+
+**Format**: EIGENSTRAT
+
+**Citation**:
+> Lazaridis, I. et al. (2014). "Ancient human genomes suggest three ancestral populations for present-day Europeans." *Nature* 513, 409–413. https://doi.org/10.1038/nature13673
+
+**Key findings**:
+- Present-day Europeans derive from at least three ancestral populations
+- Western Hunter-Gatherers (WHG) related to Loschbour
+- Early European Farmers related to Stuttgart (Anatolia_N)
+- Ancient North Eurasians (ANE) related to Upper Paleolithic Siberians
+
+---
+
 ## Download Instructions
 
 Use the download script to automatically fetch these datasets:
@@ -83,6 +113,7 @@ python scripts/00_setup/download_references.py --dataset all
 python scripts/00_setup/download_references.py --dataset 1000g
 python scripts/00_setup/download_references.py --dataset aadr
 python scripts/00_setup/download_references.py --dataset sgdp
+python scripts/00_setup/download_references.py --dataset lazaridis2014
 
 # Force re-download
 python scripts/00_setup/download_references.py --dataset all --force
@@ -110,11 +141,12 @@ May need to convert VCF to PLINK binary format:
 ## Storage Requirements
 
 | Dataset | Estimated Size |
-|---------|---------------|
+|---------|----------------|
 | 1000 Genomes | ~15 GB |
 | AADR | ~2 GB |
 | SGDP | ~500 MB |
-| **Total** | **~17.5 GB** |
+| Lazaridis 2014 | ~300 MB |
+| **Total** | **~17.8 GB** |
 
 ## Notes
 
