@@ -19,9 +19,22 @@ data/raw/23andme/*.zip
 # Large reference datasets
 data/raw/reich_lab/**
 data/raw/modern_references/**
+data/raw/1000genomes/**
+data/raw/aadr/**
+data/raw/sgdp/**
 data/reference_panels/**/*.bed
 data/reference_panels/**/*.bim
 data/reference_panels/**/*.fam
+# Keep README files
+!data/raw/README.md
+
+# EIGENSTRAT format files
+*.geno
+*.snp
+*.ind
+
+# Partial downloads
+*.partial
 
 # Results (keep structure, ignore large outputs)
 results/**/*.bed
