@@ -68,6 +68,20 @@ DATASET_INFO = {
         "output_subdir": "sgdp",
         "estimated_size_gb": 0.5,
     },
+    "lazaridis2014": {
+        "description": "Lazaridis et al. (2014) - Three ancestral populations for Europeans",
+        "base_url": "https://reichdata.hms.harvard.edu/pub/datasets/ancient_dna/lazaridis2014_nature/",
+        "files": [
+            # Ancient samples (EIGENSTRAT format)
+            "Lazaridis_Nature2014.geno",
+            "Lazaridis_Nature2014.snp",
+            "Lazaridis_Nature2014.ind",
+            # Annotation file with population information
+            "Lazaridis_Nature2014_populations.txt",
+        ],
+        "output_subdir": "lazaridis2014",
+        "estimated_size_gb": 0.3,
+    },
 }
 
 
@@ -512,6 +526,68 @@ def download_sgdp(
     return stats
 
 
+def download_lazaridis2014(
+    output_dir: Path, force: bool = False, logger: Optional[logging.Logger] = None
+) -> Dict[str, Any]:
+    """
+    Download Lazaridis et al. (2014) dataset.
+
+    Three ancestral populations for present-day Europeans:
+    - Loschbour (Western Hunter-Gatherers, WHG)
+    - Stuttgart (Early European Farmers, Anatolia_N)
+    - Comparison with Yamnaya (Steppe pastoralists)
+
+    Citation:
+    Lazaridis et al. (2014). "Ancient human genomes suggest three ancestral
+    populations for present-day Europeans." Nature 513, 409–413.
+    https://doi.org/10.1038/nature13673
+
+    Args:
+        output_dir: Base output directory
+        force: Force re-download
+        logger: Logger instance
+
+    Returns:
+        Dictionary with download statistics
+    """
+    if logger is None:
+        logger = logging.getLogger("download_references")
+
+    info = DATASET_INFO["lazaridis2014"]
+    dataset_dir = output_dir / info["output_subdir"]
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info("=" * 60)
+    logger.info(f"Downloading {info['description']}")
+    logger.info(f"Estimated size: ~{info['estimated_size_gb']} GB")
+    logger.info(f"Output directory: {dataset_dir}")
+    logger.info("=" * 60)
+
+    stats = {"downloaded": 0, "skipped": 0, "failed": 0, "total_size": 0}
+
+    for filename in info["files"]:
+        url = info["base_url"] + filename
+        output_path = dataset_dir / filename
+
+        success = download_file_http(
+            url=url, output_path=output_path, force=force, logger=logger
+        )
+
+        if success:
+            if output_path.exists():
+                stats["total_size"] += output_path.stat().st_size
+            stats["downloaded"] += 1
+        else:
+            stats["failed"] += 1
+
+    logger.info(f"\nLazaridis 2014 download complete:")
+    logger.info(f"  Downloaded: {stats['downloaded']} files")
+    logger.info(f"  Failed: {stats['failed']} files")
+    logger.info(f"  Total size: {format_size(stats['total_size'])}")
+
+    return stats
+
+
 def main() -> None:
     """Main entry point for the download script."""
     parser = argparse.ArgumentParser(
@@ -519,10 +595,11 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Datasets and estimated sizes:
-  1000g  - 1000 Genomes Project Phase 3 (~15 GB)
-  aadr   - Reich Lab Ancient DNA Resource (~2 GB)
-  sgdp   - Simons Genome Diversity Project (~500 MB)
-  all    - Download all datasets (~17.5 GB total)
+  1000g         - 1000 Genomes Project Phase 3 (~15 GB)
+  aadr          - Reich Lab Ancient DNA Resource (~2 GB)
+  sgdp          - Simons Genome Diversity Project (~500 MB)
+  lazaridis2014 - Lazaridis et al. 2014 Three Ancestral Populations (~300 MB)
+  all           - Download all datasets (~17.8 GB total)
 
 Examples:
   %(prog)s --dataset all
@@ -536,8 +613,8 @@ Examples:
         "--dataset",
         type=str,
         required=True,
-        choices=["1000g", "aadr", "sgdp", "all"],
-        help="Dataset to download: 1000g, aadr, sgdp, or all",
+        choices=["1000g", "aadr", "sgdp", "lazaridis2014", "all"],
+        help="Dataset to download: 1000g, aadr, sgdp, lazaridis2014, or all",
     )
 
     parser.add_argument(
@@ -584,7 +661,7 @@ Examples:
     # Download requested datasets
     datasets_to_download: List[str] = []
     if args.dataset == "all":
-        datasets_to_download = ["1000g", "aadr", "sgdp"]
+        datasets_to_download = ["1000g", "aadr", "sgdp", "lazaridis2014"]
     else:
         datasets_to_download = [args.dataset]
 
@@ -596,6 +673,8 @@ Examples:
                 stats = download_aadr(output_dir, args.force, logger)
             elif dataset == "sgdp":
                 stats = download_sgdp(output_dir, args.force, logger)
+            elif dataset == "lazaridis2014":
+                stats = download_lazaridis2014(output_dir, args.force, logger)
             else:
                 logger.error(f"Unknown dataset: {dataset}")
                 continue

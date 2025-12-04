@@ -22,6 +22,7 @@ data/raw/modern_references/**
 data/raw/1000genomes/**
 data/raw/aadr/**
 data/raw/sgdp/**
+data/raw/lazaridis2014/**
 data/reference_panels/**/*.bed
 data/reference_panels/**/*.bim
 data/reference_panels/**/*.fam
