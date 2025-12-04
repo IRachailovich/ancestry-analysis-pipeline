@@ -300,33 +300,72 @@ def convert_eigenstrat_to_plink_python(
         for snp in snps:
             f.write(f"{snp['chrom']}\t{snp['id']}\t{snp['cm']}\t{snp['pos']}\n")
 
-    # Process genotypes
+    # Process genotypes - read line by line to avoid memory issues
     logger.info("Converting genotypes (this may take a while for large files)...")
 
-    with open(geno_file, "r") as geno_f, open(ped_path, "w") as ped_f:
-        # Read all genotype lines
-        geno_lines = geno_f.readlines()
+    # EIGENSTRAT .geno format: each line is a SNP, each character is an individual
+    # We need to transpose: for each individual, get their genotype at each SNP
+    # For memory efficiency, we read the file multiple times (once per individual)
+    # This is slower but uses O(n_snps) memory instead of O(n_snps * n_individuals)
 
-        for idx, ind in enumerate(tqdm(individuals, desc="Converting")):
-            sex_code = {"M": "1", "F": "2", "U": "0"}.get(ind["sex"].upper(), "0")
-            ped_f.write(f"{ind['id']} {ind['id']} 0 0 {sex_code} -9")
+    n_individuals = len(individuals)
+    n_snps = len(snps)
 
-            for snp_idx, snp in enumerate(snps):
-                geno_line = geno_lines[snp_idx] if snp_idx < len(geno_lines) else ""
-                geno_char = geno_line[idx] if idx < len(geno_line) else "9"
+    # For smaller datasets, use the in-memory approach
+    if n_snps * n_individuals < 100_000_000:  # ~100MB threshold
+        with open(geno_file, "r") as geno_f:
+            geno_lines = geno_f.readlines()
 
-                ref, alt = snp["ref"], snp["alt"]
+        with open(ped_path, "w") as ped_f:
+            for idx, ind in enumerate(tqdm(individuals, desc="Converting")):
+                sex_code = {"M": "1", "F": "2", "U": "0"}.get(ind["sex"].upper(), "0")
+                ped_f.write(f"{ind['id']} {ind['id']} 0 0 {sex_code} -9")
 
-                if geno_char == "2":  # Homozygous reference
-                    ped_f.write(f" {ref} {ref}")
-                elif geno_char == "1":  # Heterozygous
-                    ped_f.write(f" {ref} {alt}")
-                elif geno_char == "0":  # Homozygous alternate
-                    ped_f.write(f" {alt} {alt}")
-                else:  # Missing
-                    ped_f.write(" 0 0")
+                for snp_idx, snp in enumerate(snps):
+                    geno_line = geno_lines[snp_idx] if snp_idx < len(geno_lines) else ""
+                    geno_char = geno_line[idx] if idx < len(geno_line) else "9"
 
-            ped_f.write("\n")
+                    ref, alt = snp["ref"], snp["alt"]
+
+                    if geno_char == "2":  # Homozygous reference
+                        ped_f.write(f" {ref} {ref}")
+                    elif geno_char == "1":  # Heterozygous
+                        ped_f.write(f" {ref} {alt}")
+                    elif geno_char == "0":  # Homozygous alternate
+                        ped_f.write(f" {alt} {alt}")
+                    else:  # Missing
+                        ped_f.write(" 0 0")
+
+                ped_f.write("\n")
+    else:
+        # For large datasets, read line by line for each individual
+        # This is slower but memory-safe
+        logger.warning("Large dataset detected - using memory-efficient mode (slower)")
+
+        with open(ped_path, "w") as ped_f:
+            for idx, ind in enumerate(tqdm(individuals, desc="Converting")):
+                sex_code = {"M": "1", "F": "2", "U": "0"}.get(ind["sex"].upper(), "0")
+                ped_f.write(f"{ind['id']} {ind['id']} 0 0 {sex_code} -9")
+
+                with open(geno_file, "r") as geno_f:
+                    for snp_idx, geno_line in enumerate(geno_f):
+                        if snp_idx >= len(snps):
+                            break
+
+                        geno_char = geno_line[idx] if idx < len(geno_line) else "9"
+                        snp = snps[snp_idx]
+                        ref, alt = snp["ref"], snp["alt"]
+
+                        if geno_char == "2":
+                            ped_f.write(f" {ref} {ref}")
+                        elif geno_char == "1":
+                            ped_f.write(f" {ref} {alt}")
+                        elif geno_char == "0":
+                            ped_f.write(f" {alt} {alt}")
+                        else:
+                            ped_f.write(" 0 0")
+
+                ped_f.write("\n")
 
     # Convert to binary format using PLINK
     if plink_path:

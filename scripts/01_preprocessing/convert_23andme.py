@@ -106,94 +106,96 @@ def parse_23andme_file(
     if not input_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
 
-    # Read header lines to detect version
-    header_lines = []
-    data_lines = []
-
     logger.info(f"Reading 23andMe file: {input_path}")
 
-    # First pass: count lines for progress bar
-    total_lines = sum(1 for _ in open(input_path, "r", encoding="utf-8", errors="replace"))
+    # Get file size for progress estimation
+    file_size = input_path.stat().st_size
 
-    with open(input_path, "r", encoding="utf-8", errors="replace") as f:
-        iterator = tqdm(f, total=total_lines, desc="Parsing", disable=not show_progress)
-
-        for line in iterator:
-            line = line.strip()
-
-            # Skip empty lines
-            if not line:
-                continue
-
-            # Collect header lines (comments)
-            if line.startswith("#"):
-                header_lines.append(line)
-                continue
-
-            data_lines.append(line)
-
-    # Detect file version
-    version = detect_23andme_version(header_lines)
-    logger.info(f"Detected 23andMe file version: {version}")
-
-    # Parse data lines
+    # Single-pass parsing with progress based on bytes read
+    header_lines = []
     snps = []
     stats = {
-        "total_lines": len(data_lines),
+        "total_lines": 0,
         "valid_snps": 0,
         "missing_genotypes": 0,
         "non_autosomal": 0,
         "invalid_format": 0,
-        "version": version,
+        "version": "unknown",
     }
 
-    for line in tqdm(data_lines, desc="Processing SNPs", disable=not show_progress):
-        parts = line.split("\t")
+    bytes_read = 0
+    with open(input_path, "r", encoding="utf-8", errors="replace") as f:
+        with tqdm(total=file_size, unit="B", unit_scale=True, desc="Parsing",
+                  disable=not show_progress) as pbar:
+            for line in f:
+                bytes_read += len(line.encode("utf-8"))
+                pbar.update(len(line.encode("utf-8")))
 
-        if len(parts) < 4:
-            stats["invalid_format"] += 1
-            continue
+                line = line.strip()
 
-        rsid = parts[0].strip()
-        chromosome = parts[1].strip()
-        position = parts[2].strip()
-        genotype = parts[3].strip()
+                # Skip empty lines
+                if not line:
+                    continue
 
-        # Validate position
-        try:
-            pos_int = int(position)
-            if pos_int <= 0:
-                stats["invalid_format"] += 1
-                continue
-        except ValueError:
-            stats["invalid_format"] += 1
-            continue
+                # Collect header lines (comments)
+                if line.startswith("#"):
+                    header_lines.append(line)
+                    continue
 
-        # Check chromosome
-        if filter_autosomal:
-            if not is_autosomal(chromosome):
-                stats["non_autosomal"] += 1
-                continue
+                stats["total_lines"] += 1
 
-        # Parse genotype
-        allele1, allele2 = parse_23andme_genotype(genotype)
+                # Parse data line
+                parts = line.split("\t")
 
-        # Check for missing genotypes
-        if allele1 == "0" or allele2 == "0":
-            stats["missing_genotypes"] += 1
-            continue
+                if len(parts) < 4:
+                    stats["invalid_format"] += 1
+                    continue
 
-        # Create SNP record
-        snp_record = {
-            "rsid": rsid,
-            "chromosome": normalize_chromosome(chromosome),
-            "position": pos_int,
-            "allele1": allele1,
-            "allele2": allele2,
-        }
+                rsid = parts[0].strip()
+                chromosome = parts[1].strip()
+                position = parts[2].strip()
+                genotype = parts[3].strip()
 
-        snps.append(snp_record)
-        stats["valid_snps"] += 1
+                # Validate position
+                try:
+                    pos_int = int(position)
+                    if pos_int <= 0:
+                        stats["invalid_format"] += 1
+                        continue
+                except ValueError:
+                    stats["invalid_format"] += 1
+                    continue
+
+                # Check chromosome
+                if filter_autosomal:
+                    if not is_autosomal(chromosome):
+                        stats["non_autosomal"] += 1
+                        continue
+
+                # Parse genotype
+                allele1, allele2 = parse_23andme_genotype(genotype)
+
+                # Check for missing genotypes
+                if allele1 == "0" or allele2 == "0":
+                    stats["missing_genotypes"] += 1
+                    continue
+
+                # Create SNP record
+                snp_record = {
+                    "rsid": rsid,
+                    "chromosome": normalize_chromosome(chromosome),
+                    "position": pos_int,
+                    "allele1": allele1,
+                    "allele2": allele2,
+                }
+
+                snps.append(snp_record)
+                stats["valid_snps"] += 1
+
+    # Detect file version from header
+    version = detect_23andme_version(header_lines)
+    stats["version"] = version
+    logger.info(f"Detected 23andMe file version: {version}")
 
     logger.info(f"Parsing complete:")
     logger.info(f"  Total lines: {stats['total_lines']}")

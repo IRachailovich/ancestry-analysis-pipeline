@@ -620,8 +620,25 @@ def write_qc_report(
         f.write("Summary:\n")
         f.write(f"  Total SNPs removed: {total_snps_removed}\n")
         f.write(f"  Total individuals removed: {total_inds_removed}\n")
-        f.write(f"  SNP retention rate: {stats.get('final_snps', 0) / max(stats.get('initial_snps', 1), 1) * 100:.1f}%\n")
-        f.write(f"  Sample retention rate: {stats.get('final_samples', 0) / max(stats.get('initial_samples', 1), 1) * 100:.1f}%\n")
+
+        # Calculate retention rates with proper handling of edge cases
+        initial_snps = stats.get('initial_snps', 0)
+        final_snps = stats.get('final_snps', 0)
+        initial_samples = stats.get('initial_samples', 0)
+        final_samples = stats.get('final_samples', 0)
+
+        if initial_snps > 0:
+            snp_retention = final_snps / initial_snps * 100
+            f.write(f"  SNP retention rate: {snp_retention:.1f}%\n")
+        else:
+            f.write("  SNP retention rate: N/A (no initial SNPs)\n")
+
+        if initial_samples > 0:
+            sample_retention = final_samples / initial_samples * 100
+            f.write(f"  Sample retention rate: {sample_retention:.1f}%\n")
+        else:
+            f.write("  Sample retention rate: N/A (no initial samples)\n")
+
         f.write("=" * 60 + "\n")
 
     logger.info(f"QC report written to: {output_path}")
