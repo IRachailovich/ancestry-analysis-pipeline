@@ -21,7 +21,6 @@ Estimated download sizes:
 
 import argparse
 import ftplib
-import hashlib
 import logging
 import os
 import sys
@@ -134,15 +133,6 @@ def format_size(size_bytes: int) -> str:
             return f"{size_bytes:.2f} {unit}"
         size_bytes /= 1024.0
     return f"{size_bytes:.2f} PB"
-
-
-def calculate_md5(file_path: Path, chunk_size: int = 8192) -> str:
-    """Calculate MD5 checksum of a file."""
-    md5_hash = hashlib.md5()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(chunk_size), b""):
-            md5_hash.update(chunk)
-    return md5_hash.hexdigest()
 
 
 def download_file_http(
